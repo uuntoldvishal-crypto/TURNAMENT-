@@ -287,21 +287,39 @@
 
     <script>
         window.onload = () => {
-            const savedTheme = localStorage.getItem('eliteTheme'); const icon = document.getElementById('theme-icon');
-            if (savedTheme === 'dark') { document.body.classList.add('dark'); if(icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); } }
+            const savedTheme = localStorage.getItem('eliteTheme'); 
+            const icon = document.getElementById('theme-icon');
+            if (savedTheme === 'dark') { 
+                document.body.classList.add('dark'); 
+                if(icon) { icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); } 
+            }
         };
         
         function toggleTheme() {
-            const body = document.body; const icon = document.getElementById('theme-icon'); body.classList.toggle('dark');
-            if (body.classList.contains('dark')) { localStorage.setItem('eliteTheme', 'dark'); icon.classList.remove('fa-moon'); icon.classList.add('fa-sun'); } 
-            else { localStorage.setItem('eliteTheme', 'light'); icon.classList.remove('fa-sun'); icon.classList.add('fa-moon'); }
+            const body = document.body; 
+            const icon = document.getElementById('theme-icon'); 
+            body.classList.toggle('dark');
+            if (body.classList.contains('dark')) { 
+                localStorage.setItem('eliteTheme', 'dark'); 
+                icon.classList.remove('fa-moon'); 
+                icon.classList.add('fa-sun'); 
+            } else { 
+                localStorage.setItem('eliteTheme', 'light'); 
+                icon.classList.remove('fa-sun'); 
+                icon.classList.add('fa-moon'); 
+            }
         }
 
         function downloadQR() {
             const url = settings.qrCodeUrl;
             if(!url) return alert("QR Code not available!");
-            const a = document.createElement('a'); a.href = url; a.download = 'ElitePro_Payment_QR'; a.target = '_blank';
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = 'ElitePro_Payment_QR'; 
+            a.target = '_blank';
+            document.body.appendChild(a); 
+            a.click(); 
+            document.body.removeChild(a);
         }
 
         const firebaseConfig = {
@@ -312,33 +330,108 @@
             storageBucket: "vishal-turnament.firebasestorage.app"
         };
         firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth(); const db = firebase.database();
-        let currentUser = null, userData = null, settings = {}, activeIntervals = {}, activeMatch = null, banTimerInterval = null;
+        const auth = firebase.auth(); 
+        const db = firebase.database();
+        
+        let currentUser = null;
+        let userData = null;
+        let settings = {};
+        let activeIntervals = {};
+        let activeMatch = null;
+        let banTimerInterval = null;
 
-        setTimeout(() => { const sp = document.getElementById('splash'); sp.style.opacity = '0'; sp.style.transition = 'opacity 0.5s ease'; sp.style.pointerEvents = 'none'; setTimeout(() => { sp.style.display = 'none'; }, 500); }, 3000);
+        setTimeout(() => { 
+            const sp = document.getElementById('splash'); 
+            if(sp) {
+                sp.style.opacity = '0'; 
+                sp.style.transition = 'opacity 0.5s ease'; 
+                sp.style.pointerEvents = 'none'; 
+                setTimeout(() => { sp.style.display = 'none'; }, 500); 
+            }
+        }, 3000);
 
-        auth.onAuthStateChanged(user => { if(user) { currentUser = user; document.getElementById('auth-screen').style.display = 'none'; initApp(); } else { document.getElementById('auth-screen').style.display = 'flex'; document.getElementById('splash').style.display = 'none'; }});
+        auth.onAuthStateChanged(user => { 
+            if(user) { 
+                currentUser = user; 
+                document.getElementById('auth-screen').style.display = 'none'; 
+                initApp(); 
+            } else { 
+                document.getElementById('auth-screen').style.display = 'flex'; 
+                document.getElementById('splash').style.display = 'none'; 
+            }
+        });
 
         function initApp() {
             db.ref('users/' + currentUser.uid).on('value', snap => {
-                userData = snap.val(); if(!userData) return;
+                userData = snap.val(); 
+                if(!userData) return;
                 
                 if(userData.bannedUntil && userData.bannedUntil > Date.now()) {
-                    document.getElementById('banned-screen').classList.remove('hidden'); document.getElementById('banned-screen').classList.add('flex'); document.getElementById('ban-message-text').innerText = userData.banMessage || "Account Restricted by Admin.";
-                    clearInterval(banTimerInterval); banTimerInterval = setInterval(() => { let diff = userData.bannedUntil - Date.now(); if(diff <= 0) { clearInterval(banTimerInterval); db.ref(`users/${currentUser.uid}`).update({bannedUntil: null, fakeUtrCount: 0}); document.getElementById('banned-screen').classList.add('hidden'); document.getElementById('banned-screen').classList.remove('flex'); } else { if(diff > 3000000000000) { document.getElementById('ban-timer-display').innerText = "PERMANENT BAN"; } else { let d = Math.floor(diff / (1000 * 60 * 60 * 24)); let h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)); let m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)); let s = Math.floor((diff % (1000 * 60)) / 1000); document.getElementById('ban-timer-display').innerText = `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; } } }, 1000);
-                } else { document.getElementById('banned-screen').classList.add('hidden'); document.getElementById('banned-screen').classList.remove('flex'); clearInterval(banTimerInterval); if(userData.bannedUntil && userData.bannedUntil <= Date.now()) { db.ref(`users/${currentUser.uid}`).update({bannedUntil: null, fakeUtrCount: 0}); } }
+                    document.getElementById('banned-screen').classList.remove('hidden'); 
+                    document.getElementById('banned-screen').classList.add('flex'); 
+                    document.getElementById('ban-message-text').innerText = userData.banMessage || "Account Restricted by Admin.";
+                    
+                    clearInterval(banTimerInterval); 
+                    banTimerInterval = setInterval(() => { 
+                        let diff = userData.bannedUntil - Date.now(); 
+                        if(diff <= 0) { 
+                            clearInterval(banTimerInterval); 
+                            db.ref(`users/${currentUser.uid}`).update({bannedUntil: null, fakeUtrCount: 0}); 
+                            document.getElementById('banned-screen').classList.add('hidden'); 
+                            document.getElementById('banned-screen').classList.remove('flex'); 
+                        } else { 
+                            if(diff > 3000000000000) { 
+                                document.getElementById('ban-timer-display').innerText = "PERMANENT BAN"; 
+                            } else { 
+                                let d = Math.floor(diff / (1000 * 60 * 60 * 24)); 
+                                let h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)); 
+                                let m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)); 
+                                let s = Math.floor((diff % (1000 * 60)) / 1000); 
+                                document.getElementById('ban-timer-display').innerText = `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; 
+                            } 
+                        } 
+                    }, 1000);
+                } else { 
+                    document.getElementById('banned-screen').classList.add('hidden'); 
+                    document.getElementById('banned-screen').classList.remove('flex'); 
+                    clearInterval(banTimerInterval); 
+                    if(userData.bannedUntil && userData.bannedUntil <= Date.now()) { 
+                        db.ref(`users/${currentUser.uid}`).update({bannedUntil: null, fakeUtrCount: 0}); 
+                    } 
+                }
 
-                document.getElementById('header-wallet').innerText = "₹" + (userData.wallet || 0); document.getElementById('wallet-balance').innerText = "₹" + (userData.wallet || 0); document.getElementById('profile-name').innerText = userData.username; document.getElementById('profile-email').innerText = userData.email; renderHistory(userData.transactions);
+                document.getElementById('header-wallet').innerText = "₹" + (userData.wallet || 0); 
+                document.getElementById('wallet-balance').innerText = "₹" + (userData.wallet || 0); 
+                document.getElementById('profile-name').innerText = userData.username; 
+                document.getElementById('profile-email').innerText = userData.email; 
+                renderHistory(userData.transactions);
             });
             
             db.ref('settings').on('value', snap => { 
                 settings = snap.val() || {};
-                if(settings.adminUpi) document.getElementById('display-upi').innerText = settings.adminUpi;
+                if(settings.adminUpi) {
+                    document.getElementById('display-upi').innerText = settings.adminUpi;
+                }
                 
-                const qrImg = document.getElementById('user-qr-img'); const qrBox = document.getElementById('qr-container');
-                if(settings.qrCodeUrl && settings.qrCodeUrl.length > 5) { qrImg.src = settings.qrCodeUrl; qrBox.style.display = 'flex'; } else { qrBox.style.display = 'none'; }
+                const qrImg = document.getElementById('user-qr-img'); 
+                const qrBox = document.getElementById('qr-container');
+                if(settings.qrCodeUrl && settings.qrCodeUrl.length > 5) { 
+                    qrImg.src = settings.qrCodeUrl; 
+                    qrBox.style.display = 'flex'; 
+                } else { 
+                    qrBox.style.display = 'none'; 
+                }
 
-                if (settings.forceUpdate) { document.getElementById('update-screen').classList.remove('hidden'); document.getElementById('update-screen').classList.add('flex'); document.getElementById('update-btn').onclick = () => { if(settings.updateLink) window.open(settings.updateLink, '_blank'); }; } else { document.getElementById('update-screen').classList.add('hidden'); document.getElementById('update-screen').classList.remove('flex'); }
+                if (settings.forceUpdate) { 
+                    document.getElementById('update-screen').classList.remove('hidden'); 
+                    document.getElementById('update-screen').classList.add('flex'); 
+                    document.getElementById('update-btn').onclick = () => { 
+                        if(settings.updateLink) window.open(settings.updateLink, '_blank'); 
+                    }; 
+                } else { 
+                    document.getElementById('update-screen').classList.add('hidden'); 
+                    document.getElementById('update-screen').classList.remove('flex'); 
+                }
                 
                 const rulesContainer = document.getElementById('dynamic-rules-container'); 
                 let rulesText = settings.gameRules || "HACK PANEL detection equals instant ban.\nRoom ID & Pass will be injected 10 mins prior in LIVE tab."; 
@@ -352,10 +445,15 @@
                 rulesContainer.innerHTML = formattedRules;
                 
                 if(!sessionStorage.getItem('socialPopupShown') && !userData?.bannedUntil) {
-                    setTimeout(() => { openModal('modal-social'); sessionStorage.setItem('socialPopupShown', 'true'); }, 1500);
+                    setTimeout(() => { 
+                        openModal('modal-social'); 
+                        sessionStorage.setItem('socialPopupShown', 'true'); 
+                    }, 1500);
                 }
             });
-            loadTournaments(); monitorActiveRequests();
+            
+            loadTournaments(); 
+            monitorActiveRequests();
         }
 
         function submitRecovery() {
@@ -365,7 +463,8 @@
             const txnKey = db.ref().push().key;
             db.ref(`recoveryRequests/${txnKey}`).set({ uid: currentUser.uid, username: userData.username, oldEmail: oldEmail, status: 'pending', time: Date.now() }).then(() => {
                 alert("Recovery Ticket Submitted Successfully!\nAdmin will verify and update your balance soon.");
-                closeModal('modal-recovery'); document.getElementById('recover-old-email').value = '';
+                closeModal('modal-recovery'); 
+                document.getElementById('recover-old-email').value = '';
             });
         }
 
@@ -378,24 +477,35 @@
             if(app === 'phonepe') url = `phonepe://pay?pa=${upi}&pn=ElitePro&am=${amt}&cu=INR`;
             else if(app === 'paytm') url = `paytmmp://pay?pa=${upi}&pn=ElitePro&am=${amt}&cu=INR`;
             else if(app === 'gpay') url = `tez://upi/pay?pa=${upi}&pn=ElitePro&am=${amt}&cu=INR`; 
-            const toast = document.getElementById('payment-toast'); toast.classList.remove('hidden');
-            setTimeout(() => { toast.classList.add('hidden'); window.location.href = url; }, 2000);
+            const toast = document.getElementById('payment-toast'); 
+            toast.classList.remove('hidden');
+            setTimeout(() => { 
+                toast.classList.add('hidden'); 
+                window.location.href = url; 
+            }, 2000);
         }
 
         function submitAddMoney() { 
-            const a = document.getElementById('add-amount').value; const u = document.getElementById('txn-id').value.trim(); 
+            const a = document.getElementById('add-amount').value; 
+            const u = document.getElementById('txn-id').value.trim(); 
             if(!/^\d{12}$/.test(u)) return alert("❌ ERROR: UTR must be exactly 12 NUMBERS (No alphabets/spaces)!");
             if(a < 10) return alert("❌ Enter a valid deposit amount!");
+            
             db.ref('addMoneyRequests').orderByChild('uid').equalTo(currentUser.uid).once('value', reqSnap => {
-                let isPending = false; reqSnap.forEach(child => { if(child.val().status === 'pending') isPending = true; });
+                let isPending = false; 
+                reqSnap.forEach(child => { if(child.val().status === 'pending') isPending = true; });
                 if(isPending) return alert("⏳ SPAM WARNING: You already have a pending request. Please wait for Admin verification!");
+                
                 db.ref('addMoneyRequests').orderByChild('utr').equalTo(u).once('value', snap => {
-                    if(snap.exists()) { return alert("❌ FRAUD DETECTED: This UTR has already been used!"); } 
-                    else {
+                    if(snap.exists()) { 
+                        return alert("❌ FRAUD DETECTED: This UTR has already been used!"); 
+                    } else {
                         const txnKey = db.ref().push().key; 
                         db.ref('addMoneyRequests/' + txnKey).set({uid: currentUser.uid, username: userData.username, amount: Number(a), utr: u, status: 'pending', time: Date.now(), txnKey: txnKey}); 
                         alert("Verification Pending! Funds will be added within 2 minutes."); 
-                        closeModal('modal-add'); document.getElementById('add-amount').value = ''; document.getElementById('txn-id').value = '';
+                        closeModal('modal-add'); 
+                        document.getElementById('add-amount').value = ''; 
+                        document.getElementById('txn-id').value = '';
                     }
                 });
             });
@@ -403,39 +513,69 @@
 
         function loadTournaments() { 
             db.ref('tournaments').on('value', snap => { 
-                const list = document.getElementById('tournament-list'); list.innerHTML = ''; 
-                Object.values(activeIntervals).forEach(i => clearInterval(i)); activeIntervals = {}; 
+                const list = document.getElementById('tournament-list'); 
+                list.innerHTML = ''; 
+                
+                Object.values(activeIntervals).forEach(i => clearInterval(i)); 
+                activeIntervals = {}; 
+                
                 snap.forEach(child => { 
-                    const t = child.val(); const pCount = t.participants ? Object.keys(t.participants).length : 0; const maxSlots = Number(t.max_players) || 50; 
-                    const isJoined = t.participants && t.participants[currentUser.uid]; const now = new Date().getTime(); const matchTime = new Date(t.match_time).getTime(); 
-                    const isTimeUp = now >= matchTime; const matchStatus = t.status ? t.status.toLowerCase() : 'upcoming'; 
-                    let btn = '', statusTxt = 'UPCOMING', statusClass = 'bg-yellow-100 text-yellow-700 border border-yellow-300'; 
+                    const t = child.val(); 
+                    const pCount = t.participants ? Object.keys(t.participants).length : 0; 
+                    const maxSlots = Number(t.max_players) || 50; 
+                    const isJoined = t.participants && t.participants[currentUser.uid]; 
+                    const now = new Date().getTime(); 
+                    const matchTime = new Date(t.match_time).getTime(); 
+                    const isTimeUp = now >= matchTime; 
+                    const matchStatus = t.status ? t.status.toLowerCase() : 'upcoming'; 
+                    let btn = '';
+                    let statusTxt = 'UPCOMING';
+                    let statusClass = 'bg-yellow-100 text-yellow-700 border border-yellow-300'; 
                     
                     if (matchStatus === 'completed') { 
-                        statusTxt = 'FINISHED'; statusClass = 'bg-slate-100 text-slate-500 border border-slate-300'; 
+                        statusTxt = 'FINISHED'; 
+                        statusClass = 'bg-slate-100 text-slate-500 border border-slate-300'; 
                         
-                        // NEW FIX FOR UNLIMITED WINNERS
                         let winnersList = []; 
-                        if (t.winners) { Object.keys(t.winners).sort().forEach(key => { winnersList.push(t.winners[key]); }); }
+                        if (t.winners) { 
+                            Object.keys(t.winners).sort().forEach(key => { 
+                                winnersList.push(t.winners[key]); 
+                            }); 
+                        }
                         
                         if(winnersList.length > 0) { 
                             let finalWinnerHTML = winnersList.map(name => `<div class="bg-black/10 py-1.5 px-2 rounded-lg mb-1.5 last:mb-0 border border-black/5 shadow-sm" style="color:#000 !important; font-size: 14px; text-shadow: 0 1px 2px rgba(255,255,255,0.4);">${name}</div>`).join(''); 
                             btn = `<div class="w-full mt-5 p-3 rounded-2xl font-black text-[12px] text-center uppercase tracking-widest font-orbitron shadow-[0_0_20px_rgba(234,179,8,0.5)] border-2 border-yellow-200" style="background: linear-gradient(45deg, #facc15, #eab308); color: #000 !important;"><div class="mb-2 flex items-center justify-center gap-2"><i class="fas fa-crown text-black animate-bounce text-lg"></i> <span>CHAMPION</span> <i class="fas fa-crown text-black animate-bounce text-lg"></i></div><div class="flex flex-col w-full">${finalWinnerHTML}</div></div>`; 
-                        } else { btn = `<div class="w-full mt-5 py-4 bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Match Concluded</div>`; } 
+                        } else { 
+                            btn = `<div class="w-full mt-5 py-4 bg-slate-50 border border-slate-200 text-slate-500 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Match Concluded</div>`; 
+                        } 
                     } else if (matchStatus === 'canceled' || matchStatus === 'cancelled') { 
-                        statusTxt = 'CANCELED'; statusClass = 'bg-red-50 text-red-600 border border-red-200'; btn = `<div class="w-full mt-5 py-4 bg-red-50 text-red-600 border border-red-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron"><i class="fas fa-ban mr-2"></i>Refunded</div>`; 
+                        statusTxt = 'CANCELED'; 
+                        statusClass = 'bg-red-50 text-red-600 border border-red-200'; 
+                        btn = `<div class="w-full mt-5 py-4 bg-red-50 text-red-600 border border-red-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron"><i class="fas fa-ban mr-2"></i>Refunded</div>`; 
                     } else if (matchStatus === 'live' || (matchStatus === 'upcoming' && isTimeUp)) { 
-                        statusTxt = 'LIVE NOW'; statusClass = 'bg-emerald-500 text-white border border-emerald-400 shadow-[0_5px_15px_rgba(16,185,129,0.4)] animate-pulse'; 
-                        if(isJoined) { btn = `<div class="w-full mt-5 p-4 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-2xl text-center shadow-[0_5px_15px_rgba(16,185,129,0.4)] border border-emerald-300"><div class="flex flex-col gap-2"><div class="text-white font-black text-xs uppercase tracking-widest font-orbitron flex justify-between items-center bg-black/20 px-4 py-3 rounded-xl"><span>ID:</span> <span class="select-all text-yellow-300 text-sm tracking-[0.15em]">${t.room_id || 'AWAITING'}</span></div><div class="text-white font-black text-xs uppercase tracking-widest font-orbitron flex justify-between items-center bg-black/20 px-4 py-3 rounded-xl"><span>PASS:</span> <span class="select-all text-yellow-300 text-sm tracking-[0.15em]">${t.room_pass || 'AWAITING'}</span></div></div></div>`; } 
-                        else { btn = `<div class="w-full mt-5 py-4 bg-slate-50 text-red-500 border border-slate-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Entry Closed</div>`; } 
+                        statusTxt = 'LIVE NOW'; 
+                        statusClass = 'bg-emerald-500 text-white border border-emerald-400 shadow-[0_5px_15px_rgba(16,185,129,0.4)] animate-pulse'; 
+                        if(isJoined) { 
+                            btn = `<div class="w-full mt-5 p-4 bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-2xl text-center shadow-[0_5px_15px_rgba(16,185,129,0.4)] border border-emerald-300"><div class="flex flex-col gap-2"><div class="text-white font-black text-xs uppercase tracking-widest font-orbitron flex justify-between items-center bg-black/20 px-4 py-3 rounded-xl"><span>ID:</span> <span class="select-all text-yellow-300 text-sm tracking-[0.15em]">${t.room_id || 'AWAITING'}</span></div><div class="text-white font-black text-xs uppercase tracking-widest font-orbitron flex justify-between items-center bg-black/20 px-4 py-3 rounded-xl"><span>PASS:</span> <span class="select-all text-yellow-300 text-sm tracking-[0.15em]">${t.room_pass || 'AWAITING'}</span></div></div></div>`; 
+                        } else { 
+                            btn = `<div class="w-full mt-5 py-4 bg-slate-50 text-red-500 border border-slate-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Entry Closed</div>`; 
+                        } 
                     } else { 
-                        if(isJoined) btn = `<div class="w-full mt-5 py-4 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron shadow-sm"><i class="fas fa-check-circle mr-2"></i>Deployment Confirmed</div>`; 
-                        else if (pCount >= maxSlots) btn = `<div class="w-full mt-5 py-4 bg-orange-50 text-orange-600 border border-orange-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Arena Full</div>`; 
-                        else btn = `<button onclick="startJoinArena('${child.key}', ${t.entry_fee}, '${t.match_type}', '${t.title}', ${pCount}, ${maxSlots})" class="w-full mt-5 py-4 btn-blue rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all font-orbitron">ENTER ARENA (₹${t.entry_fee})</button>`; 
+                        if(isJoined) {
+                            btn = `<div class="w-full mt-5 py-4 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron shadow-sm"><i class="fas fa-check-circle mr-2"></i>Deployment Confirmed</div>`; 
+                        } else if (pCount >= maxSlots) {
+                            btn = `<div class="w-full mt-5 py-4 bg-orange-50 text-orange-600 border border-orange-200 rounded-2xl font-black text-[10px] text-center uppercase tracking-[0.3em] font-orbitron">Arena Full</div>`; 
+                        } else {
+                            btn = `<button onclick="startJoinArena('${child.key}', ${t.entry_fee}, '${t.match_type}', '${t.title}', ${pCount}, ${maxSlots})" class="w-full mt-5 py-4 btn-blue rounded-2xl font-black uppercase text-xs tracking-widest active:scale-95 transition-all font-orbitron">ENTER ARENA (₹${t.entry_fee})</button>`; 
+                        }
                     } 
                     
                     const countdownID = `timer-${child.key}`; 
-                    const timerHTML = (matchStatus === 'upcoming' && !isTimeUp) ? `<div class="mt-5 flex justify-center items-center bg-yellow-50 py-2.5 rounded-xl border border-yellow-200 shadow-inner"><i class="fas fa-clock text-yellow-500 mr-2 text-sm"></i><span id="${countdownID}" class="timer-box">00h 00m 00s</span></div>` : ''; 
+                    let timerHTML = '';
+                    if(matchStatus === 'upcoming' && !isTimeUp) {
+                        timerHTML = `<div class="mt-5 flex justify-center items-center bg-yellow-50 py-2.5 rounded-xl border border-yellow-200 shadow-inner"><i class="fas fa-clock text-yellow-500 mr-2 text-sm"></i><span id="${countdownID}" class="timer-box">00h 00m 00s</span></div>`;
+                    }
 
                     let prizesHTML = '';
                     if(t.prizes && Array.isArray(t.prizes)) {
@@ -445,18 +585,105 @@
                     }
 
                     list.innerHTML += `<div class="gamer-card p-6"><span class="status-badge ${statusClass}">${statusTxt}</span><div class="relative"><img src="${t.thumbnail}" class="w-full h-44 object-cover rounded-2xl mb-5 border border-slate-100 shadow-sm"><div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div></div><h4 class="text-2xl font-black uppercase italic tracking-tighter mb-5 text-slate-900 font-orbitron truncate">${t.title}</h4><div class="flex justify-between items-start text-[10px] font-bold uppercase text-slate-500 tracking-[0.2em] bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-inner"><div class="text-left w-1/2"><p class="mb-1 text-slate-400">Prizes</p>${prizesHTML}</div><div class="text-center w-1/4"><p class="mb-1 text-slate-400">Format</p><p class="text-slate-800 text-sm font-black italic mt-1">${t.match_type}</p></div><div class="text-right w-1/4"><p class="mb-1 text-slate-400">Capacity</p><p class="${pCount >= maxSlots ? 'text-red-500' : 'text-slate-800'} text-sm font-black font-orbitron mt-1">${pCount}/${maxSlots}</p></div></div>${timerHTML}${btn}</div>`; 
-                    if(matchStatus === 'upcoming' && !isTimeUp) startLiveTimer(countdownID, t.match_time); 
+                    
+                    if(matchStatus === 'upcoming' && !isTimeUp) {
+                        startLiveTimer(countdownID, t.match_time); 
+                    }
                 }); 
             }); 
         }
 
-        function startLiveTimer(elementID, targetDate) { const countTo = new Date(targetDate).getTime(); activeIntervals[elementID] = setInterval(() => { const diff = countTo - new Date().getTime(); const element = document.getElementById(elementID); if (!element) return; if (diff <= 0) { element.innerHTML = "INITIATING..."; clearInterval(activeIntervals[elementID]); loadTournaments(); } else { const h = Math.floor(diff / (1000 * 60 * 60)); const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)); const s = Math.floor((diff % (1000 * 60)) / 1000); element.innerHTML = `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`; } }, 1000); }
+        function startLiveTimer(elementID, targetDate) { 
+            const countTo = new Date(targetDate).getTime(); 
+            activeIntervals[elementID] = setInterval(() => { 
+                const diff = countTo - new Date().getTime(); 
+                const element = document.getElementById(elementID); 
+                if (!element) return; 
+                
+                if (diff <= 0) { 
+                    element.innerHTML = "INITIATING..."; 
+                    clearInterval(activeIntervals[elementID]); 
+                    loadTournaments(); 
+                } else { 
+                    const h = Math.floor(diff / (1000 * 60 * 60)); 
+                    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)); 
+                    const s = Math.floor((diff % (1000 * 60)) / 1000); 
+                    element.innerHTML = `${String(h).padStart(2,'0')}h ${String(m).padStart(2,'0')}m ${String(s).padStart(2,'0')}s`; 
+                } 
+            }, 1000); 
+        }
         
-        function startJoinArena(id, fee, type, title, curr, max) { if(curr >= max) return alert("Arena is full!"); if(userData.wallet < fee) return alert("Insufficient Funds! Recharge Wallet."); activeMatch = { id, fee, type, title }; const container = document.getElementById('team-inputs'); container.innerHTML = ''; if(type === 'SOLO') { container.innerHTML = `<input type="text" id="m-1" placeholder="Your In-Game Name / ID" class="w-full p-5 rounded-2xl bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-900">`; document.getElementById('modal-team-title').innerHTML = `<i class="fas fa-user mr-2 text-sky-500"></i>Solo Entry`; } else { const count = type === 'SQUAD' ? 4 : 2; for(let i=1; i<=count; i++) { container.innerHTML += `<input type="text" id="m-${i}" placeholder="Player ${i} IGN" class="w-full p-4 rounded-xl bg-slate-50 text-[11px] font-bold uppercase tracking-widest text-slate-900">`; } document.getElementById('modal-team-title').innerHTML = `<i class="fas fa-users mr-2 text-sky-500"></i>Squad Entry`; } openModal('modal-team'); }
+        function startJoinArena(id, fee, type, title, curr, max) { 
+            if(curr >= max) return alert("Arena is full!"); 
+            if(userData.wallet < fee) return alert("Insufficient Funds! Recharge Wallet."); 
+            
+            activeMatch = { id, fee, type, title }; 
+            const container = document.getElementById('team-inputs'); 
+            container.innerHTML = ''; 
+            
+            if(type === 'SOLO') { 
+                container.innerHTML = `<input type="text" id="m-1" placeholder="Your In-Game Name / ID" class="w-full p-5 rounded-2xl bg-slate-50 text-xs font-bold uppercase tracking-widest text-slate-900">`; 
+                document.getElementById('modal-team-title').innerHTML = `<i class="fas fa-user mr-2 text-sky-500"></i>Solo Entry`; 
+            } else { 
+                const count = type === 'SQUAD' ? 4 : 2; 
+                for(let i=1; i<=count; i++) { 
+                    container.innerHTML += `<input type="text" id="m-${i}" placeholder="Player ${i} IGN" class="w-full p-4 rounded-xl bg-slate-50 text-[11px] font-bold uppercase tracking-widest text-slate-900">`; 
+                } 
+                document.getElementById('modal-team-title').innerHTML = `<i class="fas fa-users mr-2 text-sky-500"></i>Squad Entry`; 
+            } 
+            openModal('modal-team'); 
+        }
         
-        function confirmTeamJoin() { const members = []; const isSolo = activeMatch.type === 'SOLO'; const count = isSolo ? 1 : (activeMatch.type === 'SQUAD' ? 4 : 2); for(let i=1; i<=count; i++) { const v = document.getElementById(`m-${i}`).value.trim(); if(!v) return alert("Please fill all In-Game Names!"); members.push(v); } const txnID = db.ref().push().key; const updates = {}; if (isSolo) { updates[`/tournaments/${activeMatch.id}/participants/${currentUser.uid}`] = { username: members[0], type: 'SOLO' }; } else { updates[`/tournaments/${activeMatch.id}/participants/${currentUser.uid}`] = { leader: members[0], members: members, type: activeMatch.type }; } updates[`/users/${currentUser.uid}/wallet`] = Number(userData.wallet) - activeMatch.fee; updates[`/users/${currentUser.uid}/transactions/${txnID}`] = { amount: activeMatch.fee, type: 'debit', note: 'Arena Entry: ' + activeMatch.title, date: Date.now() }; db.ref().update(updates).then(() => { alert("Deployment Confirmed!"); closeModal('modal-team'); }); }
+        function confirmTeamJoin() { 
+            const members = []; 
+            const isSolo = activeMatch.type === 'SOLO'; 
+            const count = isSolo ? 1 : (activeMatch.type === 'SQUAD' ? 4 : 2); 
+            
+            for(let i=1; i<=count; i++) { 
+                const v = document.getElementById(`m-${i}`).value.trim(); 
+                if(!v) return alert("Please fill all In-Game Names!"); 
+                members.push(v); 
+            } 
+            
+            const txnID = db.ref().push().key; 
+            const updates = {}; 
+            
+            if (isSolo) { 
+                updates[`/tournaments/${activeMatch.id}/participants/${currentUser.uid}`] = { username: members[0], type: 'SOLO' }; 
+            } else { 
+                updates[`/tournaments/${activeMatch.id}/participants/${currentUser.uid}`] = { leader: members[0], members: members, type: activeMatch.type }; 
+            } 
+            
+            updates[`/users/${currentUser.uid}/wallet`] = Number(userData.wallet) - activeMatch.fee; 
+            updates[`/users/${currentUser.uid}/transactions/${txnID}`] = { amount: activeMatch.fee, type: 'debit', note: 'Arena Entry: ' + activeMatch.title, date: Date.now() }; 
+            
+            db.ref().update(updates).then(() => { 
+                alert("Deployment Confirmed!"); 
+                closeModal('modal-team'); 
+            }); 
+        }
         
-        function submitWithdraw() { const a = parseInt(document.getElementById('withdraw-amount').value), u = document.getElementById('withdraw-upi').value; if(a < 50 || a > 2000) return alert("Limits: ₹50 to ₹2000"); if(userData.wallet < a) return alert("Insufficient Funds!"); const txnKey = db.ref().push().key; const updates = {}; updates[`/withdrawRequests/${txnKey}`] = {uid: currentUser.uid, username: userData.username, amount: a, upi: u, status: 'pending', time: Date.now(), txnKey: txnKey}; updates[`/users/${currentUser.uid}/wallet`] = Number(userData.wallet) - a; updates[`/users/${currentUser.uid}/transactions/${txnKey}`] = { amount: a, type: 'debit', note: 'Withdrawal Processing ⏳', date: Date.now() }; db.ref().update(updates).then(() => { alert("Request Transmitted!"); closeModal('modal-withdraw'); document.getElementById('withdraw-amount').value=''; document.getElementById('withdraw-upi').value=''; }); }
+        function submitWithdraw() { 
+            const a = parseInt(document.getElementById('withdraw-amount').value);
+            const u = document.getElementById('withdraw-upi').value; 
+            
+            if(a < 50 || a > 2000) return alert("Limits: ₹50 to ₹2000"); 
+            if(userData.wallet < a) return alert("Insufficient Funds!"); 
+            
+            const txnKey = db.ref().push().key; 
+            const updates = {}; 
+            
+            updates[`/withdrawRequests/${txnKey}`] = {uid: currentUser.uid, username: userData.username, amount: a, upi: u, status: 'pending', time: Date.now(), txnKey: txnKey}; 
+            updates[`/users/${currentUser.uid}/wallet`] = Number(userData.wallet) - a; 
+            updates[`/users/${currentUser.uid}/transactions/${txnKey}`] = { amount: a, type: 'debit', note: 'Withdrawal Processing ⏳', date: Date.now() }; 
+            
+            db.ref().update(updates).then(() => { 
+                alert("Request Transmitted!"); 
+                closeModal('modal-withdraw'); 
+                document.getElementById('withdraw-amount').value=''; 
+                document.getElementById('withdraw-upi').value=''; 
+            }); 
+        }
         
         function claimPrize() { 
             const inputCode = document.getElementById('redeem-input').value.trim().toUpperCase(); 
@@ -464,11 +691,13 @@
             
             db.ref('winCodes/' + inputCode).once('value', snap => {
                 if(!snap.exists()) return alert("❌ Invalid Secure Code!");
+                
                 const codeData = snap.val();
                 if(codeData.status === 'used') return alert(`⚠️ Code already claimed by ${codeData.usedBy}!`);
                 
                 const txnKey = db.ref().push().key; 
                 const updates = {}; 
+                
                 updates[`/winCodes/${inputCode}/status`] = 'used'; 
                 updates[`/winCodes/${inputCode}/usedBy`] = userData.username; 
                 updates[`/users/${currentUser.uid}/wallet`] = Number(userData.wallet) + Number(codeData.amount); 
@@ -482,40 +711,121 @@
         }
         
         function renderHistory(txns) { 
-            const list = document.getElementById('txn-history'); list.innerHTML = ''; 
+            const list = document.getElementById('txn-history'); 
+            list.innerHTML = ''; 
+            
             if(!txns) return list.innerHTML = '<p class="text-center text-xs text-slate-400 uppercase mt-4 tracking-widest font-bold">No Records Found</p>'; 
+            
             Object.values(txns).reverse().forEach(t => { 
-                const isCredit = t.type === 'credit'; const isFailed = t.type === 'failed'; 
+                const isCredit = t.type === 'credit'; 
+                const isFailed = t.type === 'failed'; 
                 let amtColor = isCredit ? 'text-emerald-500' : (isFailed ? 'text-slate-400 line-through' : 'text-red-500'); 
                 let sign = isCredit ? '+' : (isFailed ? '' : '-'); 
                 let noteColor = isFailed ? 'text-red-500 font-bold' : 'text-slate-700 dark:text-slate-200'; 
+                
                 list.innerHTML += `<div class="bg-white dark:bg-slate-800 p-6 rounded-3xl flex justify-between items-center border border-slate-200 dark:border-slate-700 shadow-[0_8px_25px_rgba(0,0,0,0.05)] mb-4 font-bold uppercase italic tracking-wider transition-all hover:scale-[1.02]"><div class="flex-1 overflow-hidden pr-4"><p class="${noteColor} text-sm whitespace-nowrap overflow-hidden text-ellipsis">${t.note}</p><p class="text-[10px] text-slate-400 mt-1 tracking-widest"><i class="far fa-clock mr-1"></i>${new Date(t.date).toLocaleString()}</p></div><p class="text-2xl ${amtColor} font-black" style="font-family: 'Rajdhani', sans-serif;">${sign}₹${t.amount}</p></div>`; 
             }); 
         }
 
         function monitorActiveRequests() { 
-            const list = document.getElementById('active-requests-list'); const box = document.getElementById('active-requests-box'); let reqData = { add: {}, wtd: {}, rec: {} };
+            const list = document.getElementById('active-requests-list'); 
+            const box = document.getElementById('active-requests-box'); 
+            let reqData = { add: {}, wtd: {}, rec: {} };
+            
             function updateUI() {
-                let html = ''; let active = false;
-                Object.values(reqData.add).forEach(r => { if(r.status !== 'success' && r.status !== 'failed') { active = true; html += `<div class="p-4 border text-emerald-600 border-emerald-200 bg-emerald-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-bolt mr-2 text-emerald-500"></i>Deposit: ₹${r.amount}</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; } });
-                Object.values(reqData.wtd).forEach(r => { if(r.status !== 'success' && r.status !== 'failed') { active = true; html += `<div class="p-4 border text-yellow-600 border-yellow-200 bg-yellow-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-hand-holding-usd mr-2 text-yellow-500"></i>Withdrawal: ₹${r.amount}</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; } });
-                Object.values(reqData.rec).forEach(r => { if(r.status !== 'success' && r.status !== 'failed') { active = true; html += `<div class="p-4 border text-purple-600 border-purple-200 bg-purple-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-fingerprint mr-2 text-purple-500"></i>Recovery Ticket</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; } });
-                if(active) { box.classList.remove('hidden'); list.innerHTML = html; } else { box.classList.add('hidden'); }
+                let html = ''; 
+                let active = false;
+                
+                Object.values(reqData.add).forEach(r => { 
+                    if(r.status !== 'success' && r.status !== 'failed') { 
+                        active = true; 
+                        html += `<div class="p-4 border text-emerald-600 border-emerald-200 bg-emerald-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-bolt mr-2 text-emerald-500"></i>Deposit: ₹${r.amount}</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; 
+                    } 
+                });
+                
+                Object.values(reqData.wtd).forEach(r => { 
+                    if(r.status !== 'success' && r.status !== 'failed') { 
+                        active = true; 
+                        html += `<div class="p-4 border text-yellow-600 border-yellow-200 bg-yellow-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-hand-holding-usd mr-2 text-yellow-500"></i>Withdrawal: ₹${r.amount}</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; 
+                    } 
+                });
+                
+                Object.values(reqData.rec).forEach(r => { 
+                    if(r.status !== 'success' && r.status !== 'failed') { 
+                        active = true; 
+                        html += `<div class="p-4 border text-purple-600 border-purple-200 bg-purple-50 rounded-2xl flex justify-between items-center text-[10px] font-bold mb-3 uppercase tracking-widest shadow-sm"><span class="text-slate-700"><i class="fas fa-fingerprint mr-2 text-purple-500"></i>Recovery Ticket</span><span class="italic animate-pulse font-orbitron font-black">PROCESSING...</span></div>`; 
+                    } 
+                });
+                
+                if(active) { 
+                    box.classList.remove('hidden'); 
+                    list.innerHTML = html; 
+                } else { 
+                    box.classList.add('hidden'); 
+                }
             }
+            
             if(!currentUser) return;
+            
             db.ref('addMoneyRequests').orderByChild('uid').equalTo(currentUser.uid).on('value', snap => { reqData.add = snap.val() || {}; updateUI(); });
             db.ref('withdrawRequests').orderByChild('uid').equalTo(currentUser.uid).on('value', snap => { reqData.wtd = snap.val() || {}; updateUI(); });
             db.ref('recoveryRequests').orderByChild('uid').equalTo(currentUser.uid).on('value', snap => { reqData.rec = snap.val() || {}; updateUI(); });
         }
 
-        function showSec(id) { document.querySelectorAll('.main-sec').forEach(s => s.classList.add('hidden')); const target = document.getElementById('sec-' + id); if(target) target.classList.remove('hidden'); document.querySelectorAll('nav button').forEach(b => { b.classList.remove('active-nav'); b.classList.add('text-slate-400'); }); const activeBtn = document.getElementById('nav-' + id); if(activeBtn) { activeBtn.classList.add('active-nav'); activeBtn.classList.remove('text-slate-400'); } }
-        function handleLogin() { const e = document.getElementById('login-email').value.trim(), p = document.getElementById('login-pass').value; auth.signInWithEmailAndPassword(e, p).catch(err => alert("System Error: " + err.message)); }
-        function handleSignup() { const u = document.getElementById('signup-user').value.trim(), e = document.getElementById('signup-email').value.trim(), p = document.getElementById('signup-pass').value; if(!u || !e || p.length < 6) return alert("Invalid inputs!"); auth.createUserWithEmailAndPassword(e, p).then(r => { db.ref('users/' + r.user.uid).set({username: u, email: e, wallet: 0, uid: r.user.uid}).then(()=>location.reload()); }).catch(e => alert(e.message)); }
-        function handleLogout() { auth.signOut().then(() => { sessionStorage.removeItem('socialPopupShown'); location.reload(); }); }
-        function redirectLink(type) { let url = (type === 'insta') ? settings.instaLink : settings.helpLink; if(url) window.open(url, '_blank'); else alert("System Link Unavailable."); }
+        function showSec(id) { 
+            document.querySelectorAll('.main-sec').forEach(s => s.classList.add('hidden')); 
+            const target = document.getElementById('sec-' + id); 
+            if(target) target.classList.remove('hidden'); 
+            
+            document.querySelectorAll('nav button').forEach(b => { 
+                b.classList.remove('active-nav'); 
+                b.classList.add('text-slate-400'); 
+            }); 
+            
+            const activeBtn = document.getElementById('nav-' + id); 
+            if(activeBtn) { 
+                activeBtn.classList.add('active-nav'); 
+                activeBtn.classList.remove('text-slate-400'); 
+            } 
+        }
+        
+        function handleLogin() { 
+            const e = document.getElementById('login-email').value.trim();
+            const p = document.getElementById('login-pass').value; 
+            auth.signInWithEmailAndPassword(e, p).catch(err => alert("System Error: " + err.message)); 
+        }
+        
+        function handleSignup() { 
+            const u = document.getElementById('signup-user').value.trim();
+            const e = document.getElementById('signup-email').value.trim();
+            const p = document.getElementById('signup-pass').value; 
+            
+            if(!u || !e || p.length < 6) return alert("Invalid inputs!"); 
+            
+            auth.createUserWithEmailAndPassword(e, p).then(r => { 
+                db.ref('users/' + r.user.uid).set({username: u, email: e, wallet: 0, uid: r.user.uid}).then(()=>location.reload()); 
+            }).catch(e => alert(e.message)); 
+        }
+        
+        function handleLogout() { 
+            auth.signOut().then(() => { 
+                sessionStorage.removeItem('socialPopupShown'); 
+                location.reload(); 
+            }); 
+        }
+        
+        function redirectLink(type) { 
+            let url = (type === 'insta') ? settings.instaLink : settings.helpLink; 
+            if(url) window.open(url, '_blank'); 
+            else alert("System Link Unavailable."); 
+        }
+        
         function openModal(id) { document.getElementById(id).style.display = 'flex'; }
         function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-        function toggleAuth(s) { document.getElementById('login-form').classList.toggle('hidden', !s); document.getElementById('signup-form').classList.toggle('hidden', s); }
+        function toggleAuth(s) { 
+            document.getElementById('login-form').classList.toggle('hidden', !s); 
+            document.getElementById('signup-form').classList.toggle('hidden', s); 
+        }
     </script>
 </body>
 </html>
